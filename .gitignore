@@ -1,0 +1,4 @@
+.bin/
+.rustfs-data/
+.rustfs.log
+.body.tmp
