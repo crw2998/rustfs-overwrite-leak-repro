@@ -1,3 +1,5 @@
+[written by Claude]
+
 # RustFS overwrite leak — reproduction
 
 Repeatedly overwriting (re-`PUT`ting) the **same object key** in an
