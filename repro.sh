@@ -27,7 +27,10 @@ set -euo pipefail
 
 # ----- config -------------------------------------------------------------
 RUSTFS_VERSION="${RUSTFS_VERSION:-1.0.0-beta.7}"   # pin: the version we observed the bug on
-ARCH="$(uname -m)"                                  # x86_64 / aarch64
+OS="$(uname -s)"                                    # Linux / Darwin
+ARCH="$(uname -m)"                                  # x86_64 / aarch64 / arm64
+# normalize: macOS reports Apple Silicon as "arm64", Linux as "aarch64"
+[ "$ARCH" = "arm64" ] && ARCH="aarch64"
 PORT="${PORT:-9100}"
 AK=rustfsadmin ; SK=rustfsadmin
 BUCKET=repro
@@ -65,11 +68,13 @@ say() { printf '\n\033[1;36m== %s\033[0m\n' "$*"; }
 
 # ----- 0. fetch binaries --------------------------------------------------
 if [ ! -x "$RUSTFS" ]; then
-  say "downloading rustfs $RUSTFS_VERSION ($ARCH)"
-  case "$ARCH" in
-    x86_64)  rurl="rustfs-linux-x86_64-musl-v${RUSTFS_VERSION}.zip" ;;
-    aarch64) rurl="rustfs-linux-aarch64-musl-v${RUSTFS_VERSION}.zip" ;;
-    *) echo "unsupported arch: $ARCH" >&2; exit 1 ;;
+  say "downloading rustfs $RUSTFS_VERSION ($OS/$ARCH)"
+  case "$OS/$ARCH" in
+    Linux/x86_64)   rurl="rustfs-linux-x86_64-musl-v${RUSTFS_VERSION}.zip" ;;
+    Linux/aarch64)  rurl="rustfs-linux-aarch64-musl-v${RUSTFS_VERSION}.zip" ;;
+    Darwin/x86_64)  rurl="rustfs-macos-x86_64-v${RUSTFS_VERSION}.zip" ;;
+    Darwin/aarch64) rurl="rustfs-macos-aarch64-v${RUSTFS_VERSION}.zip" ;;
+    *) echo "unsupported platform: $OS/$ARCH" >&2; exit 1 ;;
   esac
   curl -fsSL "https://github.com/rustfs/rustfs/releases/download/${RUSTFS_VERSION}/${rurl}" -o "$BIN/rustfs.zip"
   unzip -o -q "$BIN/rustfs.zip" -d "$BIN"
@@ -80,9 +85,12 @@ if [ ! -x "$RUSTFS" ]; then
 fi
 if [ ! -x "$MC" ]; then
   say "downloading mc client"
-  case "$ARCH" in
-    x86_64)  murl=linux-amd64 ;;
-    aarch64) murl=linux-arm64 ;;
+  case "$OS/$ARCH" in
+    Linux/x86_64)   murl=linux-amd64 ;;
+    Linux/aarch64)  murl=linux-arm64 ;;
+    Darwin/x86_64)  murl=darwin-amd64 ;;
+    Darwin/aarch64) murl=darwin-arm64 ;;
+    *) echo "unsupported platform: $OS/$ARCH" >&2; exit 1 ;;
   esac
   curl -fsSL "https://dl.min.io/client/mc/release/${murl}/mc" -o "$MC"
   chmod +x "$MC"
